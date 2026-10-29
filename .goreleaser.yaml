@@ -1,0 +1,40 @@
+version: 2
+
+project_name: stereoscope
+
+before:
+  hooks:
+    - go run ./scripts/prepare
+
+builds:
+  - id: stereoscope
+    main: ./cmd/stereoscope
+    binary: stereoscope
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -H windowsgui -X stereoscope/internal/version.Version={{ .Version }}
+    hooks:
+      post:
+        - go run ./scripts/package "{{ .Path }}"
+
+archives:
+  - formats:
+      - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+release:
+  extra_files:
+    - glob: bin/stereoscope.apk
+    - glob: build/windows/nsis/*-installer.exe
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  disable: true

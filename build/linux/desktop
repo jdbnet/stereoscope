@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=StereoScope
+Comment=See which stereo channels are playing, and which apps are playing them.
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/stereoscope %u
+Terminal=false
+Type=Application
+Icon=stereoscope
+Categories=Utility;
+StartupWMClass=stereoscope
+
+ 
