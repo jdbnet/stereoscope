@@ -18,22 +18,17 @@ builds:
       - windows
     goarch:
       - amd64
-      - arm64
     ldflags:
       - -s -w -H windowsgui -X stereoscope/internal/version.Version={{ .Version }}
-    hooks:
-      post:
-        - go run ./scripts/package "{{ .Path }}"
 
 archives:
   - formats:
-      - zip
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+      - binary
+    name_template: "{{ .ProjectName }}"
 
 release:
   extra_files:
     - glob: bin/stereoscope.apk
-    - glob: build/windows/nsis/*-installer.exe
 
 checksum:
   name_template: checksums.txt

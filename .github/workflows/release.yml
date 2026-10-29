@@ -108,9 +108,6 @@ jobs:
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 
-      - name: Install NSIS
-        run: choco install nsis -y
-
       - uses: actions/download-artifact@v4
         with:
           name: stereoscope-apk
