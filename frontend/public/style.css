@@ -71,7 +71,8 @@ button:hover, select:hover { border-color: var(--accent); }
 
 .meters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 
-.meter span { font-size: 0.8rem; color: var(--muted); }
+.meter-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.8rem; color: var(--muted); }
+.pct { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
 
 .track {
   position: relative;
@@ -84,8 +85,6 @@ button:hover, select:hover { border-color: var(--accent); }
 
 .fill { height: 100%; background: var(--accent); }
 .hold { position: absolute; top: 0; bottom: 0; width: 2px; background: #d7fff0; }
-
-.balance { margin-top: 10px; color: #f0c674; font-size: 0.9rem; }
 
 .tests { display: flex; gap: 8px; margin-top: 12px; }
 

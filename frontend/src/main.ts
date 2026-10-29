@@ -105,17 +105,23 @@ function meter(name: string, level: number, held: number): string {
   const pct = Math.min(100, Math.round(level * 100));
   const hold = Math.min(100, Math.round(held * 100));
   return `<div class="meter">
-    <span>${name}</span>
+    <div class="meter-label"><span>${name}</span><span class="pct">${pct}%</span></div>
     <div class="track"><div class="fill" style="width:${pct}%"></div><div class="hold" style="left:${hold}%"></div></div>
   </div>`;
 }
 
-function balance(left: number, right: number, leftOn: boolean, rightOn: boolean): string {
-  if (!leftOn || !rightOn) return "";
-  const quiet = Math.min(left, right);
-  const loud = Math.max(left, right);
-  if (quiet <= 0 || loud / quiet < 2) return "";
-  return `<p class="balance">${left > right ? "Louder on the left" : "Louder on the right"}</p>`;
+const shownLevel = new Map<string, { left: number; right: number }>();
+
+function smoothLevel(id: string, sideName: "left" | "right", level: number): number {
+  let pair = shownLevel.get(id);
+  if (!pair) {
+    pair = { left: level, right: level };
+    shownLevel.set(id, pair);
+  }
+  const target = Math.min(1, Math.max(0, level));
+  const next = pair[sideName] + (target - pair[sideName]) * 0.22;
+  pair[sideName] = Math.abs(next - target) < 0.004 ? target : next;
+  return pair[sideName];
 }
 
 function render() {
@@ -143,10 +149,9 @@ function render() {
       return `<article class="card" data-pair="${escape(lv.pair.id)}">
         <header><h2>${escape(lv.pair.label)}</h2><p class="status ${text === "Silent" ? "silent" : ""}">${text}</p></header>
         <div class="meters">
-          ${meter("L", lv.left, holdPeak(lv.pair.id, "left", lv.left))}
-          ${meter("R", lv.right, holdPeak(lv.pair.id, "right", lv.right))}
+          ${meter("L", smoothLevel(lv.pair.id, "left", lv.left), holdPeak(lv.pair.id, "left", lv.left))}
+          ${meter("R", smoothLevel(lv.pair.id, "right", lv.right), holdPeak(lv.pair.id, "right", lv.right))}
         </div>
-        ${balance(lv.left, lv.right, leftOn, rightOn)}
         ${tests}
       </article>`;
     })
@@ -283,18 +288,16 @@ function updateMeters() {
     const fills = card.querySelectorAll<HTMLElement>(".fill");
     const holds = card.querySelectorAll<HTMLElement>(".hold");
     const sides = [
-      [lv.left, holdPeak(lv.pair.id, "left", lv.left)],
-      [lv.right, holdPeak(lv.pair.id, "right", lv.right)],
+      [smoothLevel(lv.pair.id, "left", lv.left), holdPeak(lv.pair.id, "left", lv.left)],
+      [smoothLevel(lv.pair.id, "right", lv.right), holdPeak(lv.pair.id, "right", lv.right)],
     ] as const;
+    const labels = card.querySelectorAll<HTMLElement>(".pct");
     sides.forEach(([level, held], index) => {
-      if (fills[index]) fills[index].style.width = `${Math.min(100, Math.round(level * 100))}%`;
+      const pct = Math.min(100, Math.round(level * 100));
+      if (fills[index]) fills[index].style.width = `${pct}%`;
       if (holds[index]) holds[index].style.left = `${Math.min(100, Math.round(held * 100))}%`;
+      if (labels[index]) labels[index].textContent = `${pct}%`;
     });
-    const note = balance(lv.left, lv.right, leftOn, rightOn);
-    let existing = card.querySelector(".balance");
-    if (note && existing) existing.outerHTML = note;
-    else if (note) card.querySelector(".meters")?.insertAdjacentHTML("afterend", note);
-    else existing?.remove();
   }
 }
 
