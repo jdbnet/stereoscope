@@ -43,7 +43,7 @@ jobs:
       - name: Install NSIS
         run: choco install nsis -y
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - name: Install Android SDK packages
         run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;26.3.11579264" "platform-tools"
