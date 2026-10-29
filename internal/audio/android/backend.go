@@ -111,18 +111,18 @@ var (
 )
 
 //export Java_com_wails_app_AudioBridge_nativeRegister
-func Java_com_wails_app_AudioBridge_nativeRegister(env *C.JNIEnv, _ C.jclass) {
+func Java_com_wails_app_AudioBridge_nativeRegister(env *C.JNIEnv, clazz C.jclass) {
 	C.registerAudio(env)
 }
 
 //export Java_com_wails_app_AudioBridge_nativeSetLevels
-func Java_com_wails_app_AudioBridge_nativeSetLevels(_ *C.JNIEnv, _ C.jclass, left C.jfloat, right C.jfloat) {
+func Java_com_wails_app_AudioBridge_nativeSetLevels(env *C.JNIEnv, clazz C.jclass, left C.jfloat, right C.jfloat) {
 	storeFloat(&leftBits, float32(left))
 	storeFloat(&rightBits, float32(right))
 }
 
 //export Java_com_wails_app_AudioBridge_nativeSetCaptureState
-func Java_com_wails_app_AudioBridge_nativeSetCaptureState(env *C.JNIEnv, _ C.jclass, value C.jstring) {
+func Java_com_wails_app_AudioBridge_nativeSetCaptureState(env *C.JNIEnv, clazz C.jclass, value C.jstring) {
 	utf := C.takeUTF(env, value)
 	if utf == nil {
 		return
