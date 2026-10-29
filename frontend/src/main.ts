@@ -165,7 +165,7 @@ function render() {
   const android =
     platform === "android" && capture !== "capturing"
       ? `<section class="notice">
-          <p>Android routes playback to one active output. The device list shows that route. Levels need Android 10 or later, a capture consent prompt, and a foreground notification.</p>
+          <p>Android asks for the microphone permission before the screen-capture prompt. That permission is how Android allows an app to measure playback. StereoScope does not listen to the microphone.</p>
           <p>Apps that opt out of capture, including many streaming apps, will not move the meters. This app doesn't allow audio capture.</p>
           <p>Now playing shows the playback type. An app name appears only when a media notification is visible and notification access is enabled.</p>
           <button id="capture">${capture === "capturing" ? "Listening" : "Allow audio capture"}</button>

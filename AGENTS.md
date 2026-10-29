@@ -28,7 +28,7 @@ Test tones use a short shared-mode WASAPI render stream. The status label uses a
 
 Wails v3 Android support is experimental. The same `main.go` is built as `libwails.so`. There is no high-level native-call API, so Go calls the static methods on `com.wails.app.AudioBridge`. The installed package id is `uk.co.jdbnet.stereoscope`; the Java namespace stays `com.wails.app`.
 
-Android routes playback to one active output. The device list reports that route. Levels need Android 10 or later, a media-projection consent prompt, and a foreground service. Apps that opt out of capture do not move the meters. Sources are usage labels such as "Media playback" or "Game". A package name is shown only when a media notification is actually visible. Test tones are unavailable. Tray calls are Windows-only.
+Android routes playback to one active output. The device list reports that route. Levels need Android 10 or later, the microphone permission (Android uses it for playback capture; the app does not record the microphone), a media-projection consent prompt, and a foreground service. Apps that opt out of capture do not move the meters. Sources are usage labels such as "Media playback" or "Game". A package name is shown only when a media notification is actually visible. Test tones are unavailable. Tray calls are Windows-only.
 
 `android` implies the `linux` build tag. Desktop Linux files must use `linux && !android`.
 

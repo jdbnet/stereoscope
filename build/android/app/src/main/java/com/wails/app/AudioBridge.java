@@ -3,6 +3,7 @@ package com.wails.app;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -20,6 +21,7 @@ import java.util.List;
  */
 public final class AudioBridge {
     static final int REQUEST_CAPTURE = 7401;
+    static final int REQUEST_RECORD_AUDIO = 7402;
 
     private static MainActivity activity;
 
@@ -45,16 +47,43 @@ public final class AudioBridge {
             return;
         }
         activity.runOnUiThread(() -> {
-            android.media.projection.MediaProjectionManager manager =
-                    (android.media.projection.MediaProjectionManager)
-                            activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-            if (manager == null) {
-                nativeSetCaptureState("denied");
+            if (activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                nativeSetCaptureState("need-consent");
+                activity.requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
                 return;
             }
-            nativeSetCaptureState("need-consent");
-            activity.startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_CAPTURE);
+            startProjection();
         });
+    }
+
+    public static boolean handlePermissionResult(int requestCode, int[] grantResults) {
+        if (requestCode != REQUEST_RECORD_AUDIO) {
+            return false;
+        }
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (activity != null) {
+                activity.runOnUiThread(AudioBridge::startProjection);
+            }
+        } else {
+            nativeSetCaptureState("denied");
+        }
+        return true;
+    }
+
+    private static void startProjection() {
+        if (activity == null) {
+            nativeSetCaptureState("denied");
+            return;
+        }
+        android.media.projection.MediaProjectionManager manager =
+                (android.media.projection.MediaProjectionManager)
+                        activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        if (manager == null) {
+            nativeSetCaptureState("denied");
+            return;
+        }
+        nativeSetCaptureState("need-consent");
+        activity.startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_CAPTURE);
     }
 
     public static boolean handleActivityResult(int requestCode, int resultCode, Intent data) {
