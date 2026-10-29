@@ -84,14 +84,12 @@ public class AudioCaptureService extends Service {
                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
                 .build();
         int sampleRate = outputSampleRate();
-        // The mix needs a positional stereo mask or AudioRecord throws while the
-        // consent result is handled. The index mask selects output channels 0 and
-        // 1. Without it, the capture is a mono mix copied onto both meters.
+        // Positional stereo is what playback capture accepts. An index mask on
+        // top of it makes some devices copy one channel onto both read slots.
         AudioFormat format = new AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                 .setSampleRate(sampleRate)
                 .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
-                .setChannelIndexMask(0x3)
                 .build();
         int min = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
         if (min <= 0) {
@@ -114,22 +112,55 @@ public class AudioCaptureService extends Service {
         AudioBridge.nativeSetCaptureState("capturing");
         final int frames = Math.max(sampleRate / 20, min / 4);
         Thread thread = new Thread(() -> {
-            short[] samples = new short[frames * channels];
+            short[] samples = new short[frames * 2];
+            int planarVotes = 0;
+            int interleavedVotes = 0;
+            boolean planar = false;
             while (running && recorder != null) {
                 int n = recorder.read(samples, 0, samples.length);
-                if (n < channels) {
+                if (n < 4) {
                     continue;
                 }
-                int left = 0;
-                int right = 0;
-                for (int i = 0; i + 1 < n; i += channels) {
-                    left = Math.max(left, Math.abs(samples[i]));
-                    right = Math.max(right, Math.abs(samples[i + 1]));
+                if ((n & 1) == 1) {
+                    n--;
                 }
-                AudioBridge.nativeSetLevels(left / 32768f, right / 32768f);
+                int[] interleaved = channelPeaks(samples, n, false);
+                int[] blocked = channelPeaks(samples, n, true);
+                int interleavedGap = Math.abs(interleaved[0] - interleaved[1]);
+                int blockedGap = Math.abs(blocked[0] - blocked[1]);
+                if (blockedGap > interleavedGap + 2000) {
+                    planarVotes++;
+                } else if (interleavedGap > blockedGap + 2000) {
+                    interleavedVotes++;
+                }
+                if (planarVotes > interleavedVotes + 2) {
+                    planar = true;
+                } else if (interleavedVotes > planarVotes + 2) {
+                    planar = false;
+                }
+                int[] peaks = planar ? blocked : interleaved;
+                AudioBridge.nativeSetLevels(peaks[0] / 32768f, peaks[1] / 32768f);
             }
         }, "stereoscope-capture");
         thread.start();
+    }
+
+    private static int[] channelPeaks(short[] samples, int count, boolean planar) {
+        int left = 0;
+        int right = 0;
+        if (planar) {
+            int half = count / 2;
+            for (int i = 0; i < half; i++) {
+                left = Math.max(left, Math.abs(samples[i]));
+                right = Math.max(right, Math.abs(samples[half + i]));
+            }
+        } else {
+            for (int i = 0; i + 1 < count; i += 2) {
+                left = Math.max(left, Math.abs(samples[i]));
+                right = Math.max(right, Math.abs(samples[i + 1]));
+            }
+        }
+        return new int[] {left, right};
     }
 
     private int outputSampleRate() {
