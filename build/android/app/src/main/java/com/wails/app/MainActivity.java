@@ -921,6 +921,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        AudioBridge.stopCapture(this);
         super.onDestroy();
         unregisterSystemEventReceivers();
         if (bridge != null) {

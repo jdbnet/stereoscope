@@ -105,6 +105,13 @@ public final class AudioBridge {
         return true;
     }
 
+    public static void stopCapture(Context context) {
+        if (context == null) {
+            return;
+        }
+        context.stopService(new Intent(context, AudioCaptureService.class));
+    }
+
     public static String devicesJson() {
         JSONArray list = new JSONArray();
         try {

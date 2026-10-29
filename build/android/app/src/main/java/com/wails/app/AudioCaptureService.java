@@ -13,7 +13,9 @@ import android.media.AudioRecord;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 
 /**
  * Captures mix audio the user has consented to, and reports stereo peaks.
@@ -56,8 +58,16 @@ public class AudioCaptureService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
+        projection.registerCallback(new MediaProjection.Callback() {
+            @Override
+            public void onStop() {
+                projection = null;
+                releaseCapture();
+                stopSelf();
+            }
+        }, new Handler(Looper.getMainLooper()));
         startRecorder();
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     private void startRecorder() {
@@ -156,7 +166,22 @@ public class AudioCaptureService extends Service {
     }
 
     @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        releaseCapture();
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
+    }
+
+    @Override
     public void onDestroy() {
+        releaseCapture();
+        super.onDestroy();
+    }
+
+    private void releaseCapture() {
+        if (!running && recorder == null && projection == null) {
+            return;
+        }
         running = false;
         if (recorder != null) {
             try {
@@ -164,13 +189,15 @@ public class AudioCaptureService extends Service {
             } catch (IllegalStateException ignored) {
             }
             recorder.release();
+            recorder = null;
         }
         if (projection != null) {
-            projection.stop();
+            MediaProjection current = projection;
+            projection = null;
+            current.stop();
         }
         AudioBridge.nativeSetLevels(0, 0);
         AudioBridge.nativeSetCaptureState("idle");
-        super.onDestroy();
     }
 
     @Override
