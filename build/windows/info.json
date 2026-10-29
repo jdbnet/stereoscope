@@ -5,9 +5,9 @@
 	"info": {
 		"0409": {
 			"ProductVersion": "0.1.0",
-			"CompanyName": "StereoScope",
-			"FileDescription": "See which stereo channels are playing, and which apps are playing them.",
-			"LegalCopyright": "© StereoScope contributors",
+			"CompanyName": "JDB-NET Limited",
+			"FileDescription": "StereoScope",
+			"LegalCopyright": "© JDB-NET Limited",
 			"ProductName": "StereoScope",
 			"Comments": "StereoScope"
 		}

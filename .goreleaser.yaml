@@ -4,7 +4,7 @@ project_name: stereoscope
 
 before:
   hooks:
-    - go run ./scripts/prepare
+    - go run ./scripts/prepare --version {{ .Version }}
 
 builds:
   - id: stereoscope

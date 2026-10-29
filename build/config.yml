@@ -5,11 +5,11 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "StereoScope"
+  companyName: "JDB-NET Limited"
   productName: "StereoScope"
   productIdentifier: "uk.co.jdbnet.stereoscope"
   description: "See which stereo channels are playing, and which apps are playing them."
-  copyright: "© StereoScope contributors"
+  copyright: "© JDB-NET Limited"
   comments: "StereoScope"
   version: "0.1.0"
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)

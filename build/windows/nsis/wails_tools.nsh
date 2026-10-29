@@ -8,7 +8,7 @@
     !define INFO_PROJECTNAME "stereoscope"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "StereoScope"
+    !define INFO_COMPANYNAME "JDB-NET Limited"
 !endif
 !ifndef INFO_PRODUCTNAME
     !define INFO_PRODUCTNAME "StereoScope"
@@ -17,7 +17,7 @@
     !define INFO_PRODUCTVERSION "0.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "© StereoScope contributors"
+    !define INFO_COPYRIGHT "© JDB-NET Limited"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
