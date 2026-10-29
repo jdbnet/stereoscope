@@ -66,19 +66,23 @@ public class AudioCaptureService extends Service {
                 .addMatchingUsage(AudioAttributes.USAGE_GAME)
                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
                 .build();
+        int sampleRate = outputSampleRate();
+        // A positional CHANNEL_IN_STEREO mask is an input mask. AudioFlinger
+        // downmixes the playback mix to mono and copies it onto both sides.
+        // Channel indexes 0 and 1 are the output's left and right.
         AudioFormat format = new AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(SAMPLE_RATE)
-                .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+                .setSampleRate(sampleRate)
+                .setChannelIndexMask(0x3)
                 .build();
-        int min = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+        int min = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
         if (min <= 0) {
-            min = SAMPLE_RATE;
+            min = sampleRate;
         }
         recorder = new AudioRecord.Builder()
                 .setAudioPlaybackCaptureConfig(config)
                 .setAudioFormat(format)
-                .setBufferSizeInBytes(min * 2)
+                .setBufferSizeInBytes(Math.max(min, sampleRate) * 2)
                 .build();
         if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
             AudioBridge.nativeSetCaptureState("denied");
@@ -88,9 +92,10 @@ public class AudioCaptureService extends Service {
         recorder.startRecording();
         running = true;
         AudioBridge.nativeSetCaptureState("capturing");
-        final int buffer = min;
+        final int channels = Math.max(1, recorder.getChannelCount());
+        final int frames = Math.max(sampleRate / 20, min / 2);
         Thread thread = new Thread(() -> {
-            short[] samples = new short[buffer];
+            short[] samples = new short[frames * channels];
             while (running) {
                 int n = recorder.read(samples, 0, samples.length);
                 if (n <= 0) {
@@ -98,14 +103,38 @@ public class AudioCaptureService extends Service {
                 }
                 int left = 0;
                 int right = 0;
-                for (int i = 0; i + 1 < n; i += 2) {
-                    left = Math.max(left, Math.abs(samples[i]));
-                    right = Math.max(right, Math.abs(samples[i + 1]));
+                if (channels < 2) {
+                    for (int i = 0; i < n; i++) {
+                        left = Math.max(left, Math.abs(samples[i]));
+                    }
+                    right = left;
+                } else {
+                    for (int i = 0; i + channels - 1 < n; i += channels) {
+                        left = Math.max(left, Math.abs(samples[i]));
+                        right = Math.max(right, Math.abs(samples[i + 1]));
+                    }
                 }
                 AudioBridge.nativeSetLevels(left / 32768f, right / 32768f);
             }
         }, "stereoscope-capture");
         thread.start();
+    }
+
+    private int outputSampleRate() {
+        AudioManager manager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (manager == null) {
+            return SAMPLE_RATE;
+        }
+        String rate = manager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
+        if (rate == null) {
+            return SAMPLE_RATE;
+        }
+        try {
+            int parsed = Integer.parseInt(rate);
+            return parsed > 0 ? parsed : SAMPLE_RATE;
+        } catch (NumberFormatException ignored) {
+            return SAMPLE_RATE;
+        }
     }
 
     private Notification notification() {
