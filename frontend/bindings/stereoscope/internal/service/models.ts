@@ -6,5 +6,4 @@
  */
 export interface Settings {
     "deviceId": string;
-    "startMinimised": boolean;
 }

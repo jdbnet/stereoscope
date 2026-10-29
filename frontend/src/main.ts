@@ -6,7 +6,6 @@ import {
   Devices,
   Platform,
   PlayTest,
-  SaveSettings,
   Settings,
   Select,
   Version,
@@ -45,7 +44,6 @@ let devices: Device[] = [];
 let levels: PairLevels[] = [];
 let sources: Source[] = [];
 let deviceID = "";
-let startMinimised = false;
 let showAbout = false;
 let version = "dev";
 
@@ -207,9 +205,6 @@ function render() {
       <h2>${icon(sources.length ? Volume2 : VolumeX, 18, 18)} Now playing</h2>
       <ul>${playing}</ul>
     </section>
-    <footer>
-      <label class="check"><input id="minimised" type="checkbox" ${startMinimised ? "checked" : ""}/> Start minimised</label>
-    </footer>
     ${about}`;
 
   document.querySelector<HTMLSelectElement>("#device")?.addEventListener("change", async (ev) => {
@@ -238,10 +233,6 @@ function render() {
   document.querySelector("#capture")?.addEventListener("click", async () => {
     capture = await BeginCapture();
     render();
-  });
-  document.querySelector("#minimised")?.addEventListener("change", async (ev) => {
-    startMinimised = (ev.target as HTMLInputElement).checked;
-    await SaveSettings({ deviceId: deviceID, startMinimised });
   });
 }
 
@@ -362,7 +353,6 @@ async function boot() {
     capture = await CaptureState();
     const settings = await Settings();
     deviceID = settings.deviceId;
-    startMinimised = settings.startMinimised;
     devices = (await Devices()) ?? [];
     if (!deviceID) {
       deviceID = devices.find((d) => d.default || d.active)?.id ?? devices[0]?.id ?? "";

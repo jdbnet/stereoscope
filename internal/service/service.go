@@ -24,7 +24,7 @@ func New(backend audio.Backend) *Service {
 	return &Service{backend: backend}
 }
 
-// AttachWindow lets the tray and start-minimised option show the main window.
+// AttachWindow lets the tray show the main window.
 func (s *Service) AttachWindow(window *application.WebviewWindow) {
 	s.window = window
 }

@@ -22,7 +22,7 @@ import * as audio$0 from "../audio/models.js";
 import * as $models from "./models.js";
 
 /**
- * AttachWindow lets the tray and start-minimised option show the main window.
+ * AttachWindow lets the tray show the main window.
  */
 export function AttachWindow(window: application$0.WebviewWindow | null): $CancellablePromise<void> {
     return $Call.ByID(1910763923, window);

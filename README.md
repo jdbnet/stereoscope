@@ -8,7 +8,7 @@ It is a [Wails](https://v3.wails.io/) v3 application written in Go 1.27.3. The i
 
 The Windows build reads peak meters from WASAPI. It does not capture the mix, so idle monitoring stays light. For a 7.1 device it shows four pairs: Front, Centre / LFE, Rear, and Side. Each pair is labelled Left only, Right only, Both, or Silent. The test buttons play a short tone on the left, the right, or both of that pair.
 
-A program appears under Now playing when its session is active and actually producing sound. System sounds are labelled "System sounds". The last device, and the start-minimised option, are stored in the user config directory under `stereoscope/settings.json`.
+A program appears under Now playing when its session is active and actually producing sound. System sounds are labelled "System sounds". The last device is stored in the user config directory under `stereoscope/settings.json`.
 
 The system tray shows a compact left/right percentage and can open or quit the app.
 

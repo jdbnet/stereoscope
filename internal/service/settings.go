@@ -8,8 +8,7 @@ import (
 
 // Settings is persisted in the user config directory.
 type Settings struct {
-	DeviceID       string `json:"deviceId"`
-	StartMinimised bool   `json:"startMinimised"`
+	DeviceID string `json:"deviceId"`
 }
 
 func settingsPath() (string, error) {

@@ -23,7 +23,6 @@ func main() {
 		log.Fatal(err)
 	}
 	svc := service.New(backend)
-	settings := svc.Settings()
 
 	app := application.New(application.Options{
 		Name:        "StereoScope",
@@ -47,7 +46,6 @@ func main() {
 		MinHeight:        560,
 		BackgroundColour: application.NewRGB(17, 19, 24),
 		URL:              "/",
-		Hidden:           settings.StartMinimised,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
