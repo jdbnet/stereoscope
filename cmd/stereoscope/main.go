@@ -18,9 +18,6 @@ func init() {
 }
 
 func main() {
-	closeDiag := openDiag()
-	defer closeDiag()
-
 	backend, err := host.Open()
 	if err != nil {
 		log.Fatal(err)
@@ -35,7 +32,7 @@ func main() {
 			application.NewService(svc),
 		},
 		Assets: application.AssetOptions{
-			Handler: loggedAssets(application.BundledAssetFileServer(frontend.Dist())),
+			Handler: application.BundledAssetFileServer(frontend.Dist()),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
