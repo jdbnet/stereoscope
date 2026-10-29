@@ -35,7 +35,7 @@ wails3 task dev          # current desktop
 goreleaser build --snapshot --clean
 ```
 
-`goreleaser release --clean` publishes a GitHub release from a `v*` tag. The workflow in `.github/workflows/release.yml` runs that command on a Windows runner, with NSIS and the Android SDK installed. The release contains the Windows zip archives, the NSIS installer, and `stereoscope.apk` when the SDK is available. Nothing is code-signed.
+Push to `main`, then run the Release workflow from the Actions tab. It has no inputs. The workflow tags the next semantic version from the conventional commits, and GoReleaser writes the release notes and publishes that version. The job runs on a Windows runner with NSIS and the Android SDK. The release contains the Windows zip archives, the NSIS installer, and `stereoscope.apk` when the SDK is available. Nothing is code-signed.
 
 The version shown in About comes from the git tag via GoReleaser. A normal `go build` shows `dev`.
 

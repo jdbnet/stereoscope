@@ -34,4 +34,4 @@ Android routes playback to one active output. The device list reports that route
 
 ## Release
 
-GoReleaser v2 builds the Windows binary and publishes the GitHub release. `.goreleaser.yaml` runs `scripts/prepare.go` first (bindings, frontend, and `wails3 task android:package` when `ANDROID_HOME` is set) and `scripts/package.go` afterwards for the NSIS installer. GitHub Actions on `windows-latest` only checks out the tree and runs `goreleaser release --clean` for `v*` tags. The version string is injected with `-X stereoscope/internal/version.Version`. A plain `go build` reports `dev`.
+GoReleaser v2 builds the Windows binary and publishes the GitHub release. `.goreleaser.yaml` runs `scripts/prepare` first (bindings, frontend, and `wails3 task android:package` when `ANDROID_HOME` is set) and `scripts/package` afterwards for the NSIS installer. The Release workflow is `workflow_dispatch` only. It tags `svu next` from the conventional commits, then runs `goreleaser release --clean`. GoReleaser writes the release notes and stamps `-X stereoscope/internal/version.Version`. A plain `go build` reports `dev`.

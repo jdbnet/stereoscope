@@ -1,9 +1,7 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 jobs:
   release:
@@ -22,6 +20,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Tag the next version
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/caarlos0/svu/v3@latest
+          next="$(svu next)"
+          current="$(svu current 2>/dev/null || true)"
+          if [ -n "$current" ] && [ "$next" = "$current" ]; then
+            echo "No release-worthy commits since $current."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$next"
+          git push origin "$next"
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
