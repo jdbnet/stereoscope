@@ -248,6 +248,7 @@ tasks:
 
   generate:android:overlay:
     internal: true
+    dir: '{{.ROOT_DIR}}'
     summary: Generate Go build overlay that registers the Android main
     sources:
       - build/config.yml
@@ -256,6 +257,18 @@ tasks:
       - build/android/gen/main_android.gen.go
     cmds:
       - wails3 android overlay:gen -out build/android/overlay.json -config build/config.yml
+      - |
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        overlay = Path("build/android/overlay.json")
+        data = json.loads(overlay.read_text())
+        data["Replace"] = {
+            str(Path(src).parent / "cmd" / "stereoscope" / Path(src).name): dst
+            for src, dst in data["Replace"].items()
+        }
+        overlay.write_text(json.dumps(data, indent=2) + "\n")
+        PY
 
   generate:android:bindings:
     internal: true

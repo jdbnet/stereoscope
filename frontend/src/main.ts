@@ -267,6 +267,7 @@ function previewFrame() {
 }
 
 async function boot() {
+  render();
   if (preview) {
     platform = "windows";
     version = "dev";

@@ -32,7 +32,7 @@ func main() {
 			application.NewService(svc),
 		},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(frontend.Dist()),
+			Handler: application.BundledAssetFileServer(frontend.Dist()),
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
