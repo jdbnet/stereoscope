@@ -75,8 +75,23 @@ jobs:
 
       - name: Install Android NDK
         run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "platform-tools"
-          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/28.2.13676358" >> "${GITHUB_ENV}"
+          set -euo pipefail
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          ndk="${ANDROID_SDK_ROOT}/ndk/28.2.13676358"
+          for attempt in 1 2 3; do
+            if sdkmanager --install "ndk;28.2.13676358"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "The NDK download was corrupt after 3 attempts"
+              exit 1
+            fi
+            echo "NDK package failed to unpack, retry ${attempt}"
+            rm -rf "${ANDROID_SDK_ROOT}/.temp" "$ndk"
+            sleep 15
+          done
+          test -x "$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+          echo "ANDROID_NDK_HOME=$ndk" >> "${GITHUB_ENV}"
           echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "${GITHUB_ENV}"
 
       - name: Build the APK
