@@ -8,5 +8,18 @@ export default defineConfig({
     port: Number(process.env.WAILS_VITE_PORT) || 9245,
     strictPort: true,
   },
-  plugins: [wails("./bindings")],
+  plugins: [
+    wails("./bindings"),
+    {
+      name: "android-webview-scripts",
+      transformIndexHtml: {
+        order: "post",
+        handler(html) {
+          // WebView2 and the Android WebView both drop a module script
+          // marked crossorigin when the app itself serves the file.
+          return html.replaceAll(" crossorigin", "");
+        },
+      },
+    },
+  ],
 });
