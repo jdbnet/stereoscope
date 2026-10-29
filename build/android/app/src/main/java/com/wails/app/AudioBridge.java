@@ -181,6 +181,6 @@ public final class AudioBridge {
     }
 
     private static native void nativeRegister();
-    private static native void nativeSetCaptureState(String state);
+    static native void nativeSetCaptureState(String state);
     static native void nativeSetLevels(float left, float right);
 }
