@@ -4,6 +4,7 @@ package windows
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -35,13 +36,17 @@ type backend struct {
 	sources  []audio.Source
 	readyErr error
 
-	enum       *wca.IMMDeviceEnumerator
-	selected   *wca.IMMDevice
-	selectedID string
-	meter      *wca.IAudioMeterInformation
-	mask       uint32
-	channels   int
-	icons      map[string]string
+	enum          *wca.IMMDeviceEnumerator
+	selected      *wca.IMMDevice
+	selectedID    string
+	meter         *wca.IAudioMeterInformation
+	captureClient *wca.IAudioClient
+	capture       *wca.IAudioCaptureClient
+	captureCh     int
+	captureMask   uint32
+	mask          uint32
+	channels      int
+	icons         map[string]string
 }
 
 // Open starts the WASAPI backend on a locked OS thread.
@@ -280,7 +285,11 @@ func channelMask(wfx *wca.WAVEFORMATEX) uint32 {
 	if wfx.WFormatTag != waveFormatExtensible || wfx.CbSize < 22 {
 		return 0
 	}
-	mask := unsafe.Add(unsafe.Pointer(wfx), unsafe.Sizeof(*wfx)+2)
+	// The Windows structure is 18 bytes, then a 2-byte sample field, then the
+	// channel mask. Go pads WAVEFORMATEX to 20 bytes, so sizeof would skip
+	// past the mask and the front pair would stay silent.
+	const packedWaveFormatEx = 18
+	mask := unsafe.Add(unsafe.Pointer(wfx), packedWaveFormatEx+2)
 	return *(*uint32)(mask)
 }
 
@@ -332,11 +341,13 @@ func (b *backend) selectID(id string) error {
 	b.mask = mask
 	b.channels = ch
 	b.selectedID = id
+	b.openLoopback(dev)
 	b.readLevels()
 	return nil
 }
 
 func (b *backend) releaseSelected() {
+	b.closeLoopback()
 	if b.meter != nil {
 		b.meter.Release()
 		b.meter = nil
@@ -348,22 +359,117 @@ func (b *backend) releaseSelected() {
 }
 
 func (b *backend) readLevels() {
+	if peaks := b.loopbackPeaks(); peaks != nil {
+		grouped := levelsFromChannels(b.captureMask, peaks)
+		b.mu.Lock()
+		b.levels = grouped
+		b.channels = b.captureCh
+		b.mu.Unlock()
+		return
+	}
 	if b.meter == nil {
 		return
 	}
 	var n uint32
 	if err := b.meter.GetMeteringChannelCount(&n); err != nil || n == 0 {
-		return
+		n = 0
 	}
-	peaks := make([]float32, n)
-	if err := b.meter.GetChannelsPeakValues(n, peaks); err != nil {
-		return
+	var peaks []float32
+	if n > 0 {
+		peaks = make([]float32, n)
+		if err := b.meter.GetChannelsPeakValues(n, peaks); err != nil {
+			peaks = nil
+		}
 	}
-	grouped := audio.GroupPeaks(b.mask, peaks)
+	// HDMI and some hardware-offloaded outputs leave the endpoint meter at
+	// zero while the sessions on that device still have per-channel peaks.
+	sessionPeaks, mono := b.sessionPeaks()
+	for i, peak := range sessionPeaks {
+		if i < len(peaks) && peak > peaks[i] {
+			peaks[i] = peak
+		}
+	}
 	b.mu.Lock()
-	b.levels = grouped
+	for _, src := range b.sources {
+		if src.Peak > mono {
+			mono = src.Peak
+		}
+	}
+	b.levels = audio.WithSessionPeak(audio.GroupPeaks(b.mask, peaks), mono)
 	b.channels = int(n)
 	b.mu.Unlock()
+}
+
+func (b *backend) sessionPeaks() (peaks []float32, mono float32) {
+	if b.selected == nil {
+		return nil, 0
+	}
+	var mgr *wca.IAudioSessionManager2
+	if err := b.selected.Activate(wca.IID_IAudioSessionManager2, wca.CLSCTX_ALL, nil, &mgr); err != nil {
+		return nil, 0
+	}
+	defer mgr.Release()
+	var enum *wca.IAudioSessionEnumerator
+	if err := mgr.GetSessionEnumerator(&enum); err != nil {
+		return nil, 0
+	}
+	defer enum.Release()
+	var count int
+	if err := enum.GetCount(&count); err != nil {
+		return nil, 0
+	}
+	var max []float32
+	for i := 0; i < count; i++ {
+		var ctrl *wca.IAudioSessionControl
+		if err := enum.GetSession(i, &ctrl); err != nil {
+			continue
+		}
+		var state uint32
+		if err := ctrl.GetState(&state); err != nil || state != wca.AudioSessionStateActive {
+			ctrl.Release()
+			continue
+		}
+		meterDisp, err := ctrl.QueryInterface(wca.IID_IAudioMeterInformation)
+		ctrl.Release()
+		if err != nil {
+			continue
+		}
+		meter := (*wca.IAudioMeterInformation)(unsafe.Pointer(meterDisp))
+		var peak float32
+		if meter.GetPeakValue(&peak) == nil && peak > mono {
+			mono = peak
+		}
+		var channelCount uint32
+		if meter.GetMeteringChannelCount(&channelCount) == nil && channelCount > 0 && channelCount <= 18 {
+			one := make([]float32, channelCount)
+			if meter.GetChannelsPeakValues(channelCount, one) == nil && peakMax(one) >= playingThreshold {
+				if max == nil {
+					max = make([]float32, channelCount)
+				}
+				limit := len(one)
+				if len(max) < limit {
+					limit = len(max)
+				}
+				for j := 0; j < limit; j++ {
+					if one[j] > max[j] {
+						max[j] = one[j]
+					}
+				}
+			}
+		}
+		meter.Release()
+	}
+	return max, mono
+}
+
+func peakMax(peaks []float32) float32 {
+	var max float32
+	for _, peak := range peaks {
+		if peak > max {
+			max = peak
+		}
+	}
+	return max
 }
 
 func (b *backend) readSources() {
@@ -427,6 +533,9 @@ func (b *backend) sessionSource(ctrl *wca.IAudioSessionControl) (audio.Source, b
 	system := ctrl2.IsSystemSoundsSession() == nil
 	var pid uint32
 	_ = ctrl2.GetProcessId(&pid)
+	if pid == uint32(os.Getpid()) {
+		return audio.Source{}, false
+	}
 	if system || pid == 0 {
 		return audio.Source{PID: 0, Name: "System sounds", Peak: peak}, true
 	}

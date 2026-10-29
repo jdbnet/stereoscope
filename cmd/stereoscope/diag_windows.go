@@ -76,6 +76,12 @@ func loggedAssets(next http.Handler) http.Handler {
 				http.Error(w, fmt.Sprint(recovered), http.StatusInternalServerError)
 			}
 		}()
+		if r.URL.Path == "/__diag" {
+			body, _ := io.ReadAll(io.LimitReader(r.Body, 8192))
+			log.Printf("script: %s", bytes.TrimSpace(body))
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		next.ServeHTTP(rec, r)
 		log.Printf("asset %s %s -> %d %d bytes %s", r.Method, r.URL.RequestURI(), rec.Code, rec.Body.Len(), rec.Header().Get("Content-Type"))
 		if r.URL.Path == "/" || r.URL.Path == "/index.html" {

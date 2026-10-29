@@ -8,6 +8,14 @@
   </head>
   <body>
     <div id="app"><h1>StereoScope</h1></div>
+    <script>
+      window.onerror = function (message, _source, line, column) {
+        fetch("/__diag", { method: "POST", body: String(message) + " at " + line + ":" + column });
+      };
+      window.addEventListener("unhandledrejection", function (event) {
+        fetch("/__diag", { method: "POST", body: "rejection " + String(event.reason) });
+      });
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

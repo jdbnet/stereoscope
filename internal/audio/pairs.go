@@ -24,6 +24,42 @@ var pairOrder = []pairDef{
 	{"side", "Side", SpeakerSideLeft, SpeakerSideRight},
 }
 
+// WithSessionPeak keeps a measured stereo layout, and uses the session's
+// overall peak for the front pair when every channel peak is silent. HDMI
+// outputs often report that overall peak and nothing per channel.
+func WithSessionPeak(levels []PairLevels, mono float32) []PairLevels {
+	const audible = float32(0.005)
+	for _, lv := range levels {
+		if lv.Left >= audible || lv.Right >= audible {
+			return levels
+		}
+	}
+	if mono < audible {
+		if len(levels) == 0 {
+			return []PairLevels{{Pair: Pair{ID: "front", Label: "Front"}}}
+		}
+		return levels
+	}
+	if len(levels) == 0 {
+		return []PairLevels{{
+			Pair:  Pair{ID: "front", Label: "Front"},
+			Left:  mono,
+			Right: mono,
+		}}
+	}
+	out := append([]PairLevels(nil), levels...)
+	for i := range out {
+		if out[i].Pair.ID == "front" {
+			out[i].Left = mono
+			out[i].Right = mono
+			return out
+		}
+	}
+	out[0].Left = mono
+	out[0].Right = mono
+	return out
+}
+
 // GroupPeaks maps WASAPI peak values onto stereo pairs.
 // Channels are ordered by ascending mask bit, which is the mix-format order.
 // A zero mask is treated as sequential stereo pairs in the same order.

@@ -25,6 +25,18 @@ func TestGroupPeaks71(t *testing.T) {
 	}
 }
 
+func TestWithSessionPeakFillsSilentFront(t *testing.T) {
+	got := WithSessionPeak(nil, 0.4)
+	if len(got) != 1 || got[0].Left != 0.4 || got[0].Right != 0.4 {
+		t.Fatalf("%+v", got)
+	}
+	stereo := GroupPeaks(SpeakerFrontLeft|SpeakerFrontRight, []float32{0.2, 0.9})
+	kept := WithSessionPeak(stereo, 0.1)
+	if kept[0].Left != 0.2 || kept[0].Right != 0.9 {
+		t.Fatalf("kept stereo: %+v", kept[0])
+	}
+}
+
 func TestGroupPeaksStereo(t *testing.T) {
 	got := GroupPeaks(SpeakerFrontLeft|SpeakerFrontRight, []float32{0.4, 0.0})
 	if len(got) != 1 || got[0].Left != 0.4 || got[0].Right != 0 {

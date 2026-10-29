@@ -1,4 +1,4 @@
-import { Speaker, Volume2, VolumeX } from "lucide";
+import { Speaker, Volume2, VolumeX, createElement } from "lucide";
 import { Events } from "@wailsio/runtime";
 import {
   BeginCapture,
@@ -24,11 +24,20 @@ const peaks = new Map<string, { left: number; right: number }>();
 
 declare global {
   interface Window {
-    _wails?: { environment?: { OS?: string } };
+    _wails?: { environment?: { OS?: string }; invoke?: unknown };
+    wails?: { invoke?: unknown };
+    chrome?: { webview?: unknown };
+    webkit?: { messageHandlers?: { external?: unknown } };
   }
 }
 
-const preview = !window._wails?.environment?.OS;
+// environment.OS is filled in after the runtime is ready. The native bridge
+// is already present when this script runs.
+const preview = !(
+  window.chrome?.webview ||
+  window.wails?.invoke ||
+  window.webkit?.messageHandlers?.external
+);
 
 let platform = "windows";
 let capture = "unsupported";
@@ -87,8 +96,9 @@ function holdPeak(key: string, sideName: "left" | "right", level: number): numbe
   return pair[sideName];
 }
 
-function icon(svg: string): string {
-  return `<span class="icon" aria-hidden="true">${svg}</span>`;
+function icon(node: typeof Speaker, width: number, height: number): string {
+  const svg = createElement(node, { width, height });
+  return `<span class="icon" aria-hidden="true">${svg.outerHTML}</span>`;
 }
 
 function meter(name: string, level: number, held: number): string {
@@ -130,7 +140,7 @@ function render() {
               <button data-test="${lv.pair.id}:right">Right</button>
               <button data-test="${lv.pair.id}:both">Both</button>
             </div>`;
-      return `<article class="card">
+      return `<article class="card" data-pair="${escape(lv.pair.id)}">
         <header><h2>${escape(lv.pair.label)}</h2><p class="status ${text === "Silent" ? "silent" : ""}">${text}</p></header>
         <div class="meters">
           ${meter("L", lv.left, holdPeak(lv.pair.id, "left", lv.left))}
@@ -149,7 +159,7 @@ function render() {
           .map((src) => {
             const img = src.icon
               ? `<img alt="" src="${src.icon}" />`
-              : icon(Volume2.toSvg({ width: 18, height: 18 }));
+              : icon(Volume2, 18, 18);
             const note = src.note ? `<small>${escape(src.note)}</small>` : "";
             return `<li>${img}<div><strong>${escape(src.name)}</strong>${note}</div><div class="mini"><div style="width:${Math.min(100, Math.round(src.peak * 100))}%"></div></div></li>`;
           })
@@ -180,7 +190,7 @@ function render() {
     : "";
 
   app.innerHTML = `${banner}<header class="top">
-      <div class="brand">${icon(Speaker.toSvg({ width: 22, height: 22 }))}<div><h1>StereoScope</h1><p>Live channel monitor</p></div></div>
+      <div class="brand">${icon(Speaker, 22, 22)}<div><h1>StereoScope</h1><p>Live channel monitor</p></div></div>
       <label>Output device
         <select id="device">${options}</select>
       </label>
@@ -189,7 +199,7 @@ function render() {
     ${android}
     <section class="grid">${cards}</section>
     <section class="playing">
-      <h2>${icon(sources.length ? Volume2.toSvg({ width: 18, height: 18 }) : VolumeX.toSvg({ width: 18, height: 18 }))} Now playing</h2>
+      <h2>${icon(sources.length ? Volume2 : VolumeX, 18, 18)} Now playing</h2>
       <ul>${playing}</ul>
     </section>
     <footer>
@@ -246,7 +256,69 @@ function previewTone(pair: string, sideName: string) {
     if (lv.pair.id !== pair) return lv;
     return { ...lv, left: sideName === "right" ? 0 : 0.8, right: sideName === "left" ? 0 : 0.8 };
   });
-  render();
+  updateMeters();
+}
+
+function shownLevels(): PairLevels[] {
+  return levels.length ? levels : [{ pair: { id: "front", label: "Front" }, left: 0, right: 0 }];
+}
+
+function updateMeters() {
+  const rows = shownLevels();
+  const cards = [...document.querySelectorAll<HTMLElement>("#app article.card")];
+  if (cards.length !== rows.length || rows.some((lv, i) => cards[i].dataset.pair !== lv.pair.id)) {
+    render();
+    return;
+  }
+  for (const lv of rows) {
+    const card = cards.find((item) => item.dataset.pair === lv.pair.id)!;
+    const leftOn = updateSide(lv.pair.id, "left", lv.left);
+    const rightOn = updateSide(lv.pair.id, "right", lv.right);
+    const text = label(leftOn, rightOn);
+    const status = card.querySelector(".status");
+    if (status) {
+      status.textContent = text;
+      status.classList.toggle("silent", text === "Silent");
+    }
+    const fills = card.querySelectorAll<HTMLElement>(".fill");
+    const holds = card.querySelectorAll<HTMLElement>(".hold");
+    const sides = [
+      [lv.left, holdPeak(lv.pair.id, "left", lv.left)],
+      [lv.right, holdPeak(lv.pair.id, "right", lv.right)],
+    ] as const;
+    sides.forEach(([level, held], index) => {
+      if (fills[index]) fills[index].style.width = `${Math.min(100, Math.round(level * 100))}%`;
+      if (holds[index]) holds[index].style.left = `${Math.min(100, Math.round(held * 100))}%`;
+    });
+    const note = balance(lv.left, lv.right, leftOn, rightOn);
+    let existing = card.querySelector(".balance");
+    if (note && existing) existing.outerHTML = note;
+    else if (note) card.querySelector(".meters")?.insertAdjacentHTML("afterend", note);
+    else existing?.remove();
+  }
+}
+
+function updatePlaying() {
+  const section = document.querySelector(".playing");
+  if (!section) {
+    render();
+    return;
+  }
+  const heading = section.querySelector("h2");
+  if (heading) heading.innerHTML = `${icon(sources.length ? Volume2 : VolumeX, 18, 18)} Now playing`;
+  const playing =
+    sources.length === 0
+      ? `<p class="empty">Nothing is playing to this device</p>`
+      : `<ul>${sources
+          .map((src) => {
+            const img = src.icon ? `<img alt="" src="${src.icon}" />` : icon(Volume2, 18, 18);
+            const note = src.note ? `<small>${escape(src.note)}</small>` : "";
+            return `<li>${img}<div><strong>${escape(src.name)}</strong>${note}</div><div class="mini"><div style="width:${Math.min(100, Math.round(src.peak * 100))}%"></div></div></li>`;
+          })
+          .join("")}</ul>`;
+  const list = section.querySelector("ul, .empty");
+  if (list) list.outerHTML = playing;
+  else section.insertAdjacentHTML("beforeend", playing);
 }
 
 function previewFrame() {
@@ -263,7 +335,7 @@ function previewFrame() {
   } else {
     levels = specs.map(([id, label, left, right]) => ({ pair: { id, label }, left, right }));
   }
-  render();
+  updateMeters();
 }
 
 async function boot() {
@@ -300,11 +372,11 @@ async function boot() {
 
 Events.On("levels", (event) => {
   levels = (event.data as PairLevels[]) ?? [];
-  render();
+  updateMeters();
 });
 Events.On("sources", (event) => {
   sources = (event.data as Source[]) ?? [];
-  render();
+  updatePlaying();
 });
 Events.On("devices", (event) => {
   devices = (event.data as Device[]) ?? [];
