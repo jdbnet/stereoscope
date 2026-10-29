@@ -1,5 +1,6 @@
-// Command prepare builds the frontend and, when the Android SDK is present,
-// the release APK. GoReleaser runs it before compiling the Windows binary.
+// Command prepare builds the frontend. GoReleaser runs it before the Windows
+// binary. The APK is built by the Ubuntu release job; the Windows image sets
+// ANDROID_HOME, and the Wails Android task refuses that host.
 package main
 
 import (
@@ -14,11 +15,6 @@ func main() {
 	run(root, "wails3", "generate", "bindings", "-ts", "./...")
 	run(filepath.Join(root, "frontend"), "npm", "ci")
 	run(filepath.Join(root, "frontend"), "npm", "run", "build")
-	if os.Getenv("ANDROID_HOME") == "" && os.Getenv("ANDROID_SDK_ROOT") == "" {
-		fmt.Println("prepare: Android SDK not configured, skipping the APK")
-		return
-	}
-	run(root, "wails3", "task", "android:package")
 }
 
 func rootDir() string {
