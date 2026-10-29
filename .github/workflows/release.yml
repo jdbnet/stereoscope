@@ -4,7 +4,79 @@ on:
   workflow_dispatch:
 
 jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+
+      - name: Tag the next version
+        id: version
+        run: |
+          set -euo pipefail
+          go install github.com/caarlos0/svu/v3@latest
+          existing="$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)"
+          if [ -n "$existing" ]; then
+            echo "HEAD is already $existing"
+            echo "tag=$existing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          next="$(svu next)"
+          current="$(svu current 2>/dev/null || true)"
+          if [ -n "$current" ] && [ "$next" = "$current" ]; then
+            echo "No release-worthy commits since $current."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$next"
+          git push origin "$next"
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+
+  apk:
+    needs: tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;26.3.11579264" "platform-tools"
+
+      - name: Build the APK
+        run: |
+          set -euo pipefail
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264"
+          wails3 task android:package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stereoscope-apk
+          path: bin/stereoscope.apk
+
   release:
+    needs: [tag, apk]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -21,32 +93,16 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Tag the next version
-        shell: bash
-        run: |
-          set -euo pipefail
-          go install github.com/caarlos0/svu/v3@latest
-          next="$(svu next)"
-          current="$(svu current 2>/dev/null || true)"
-          if [ -n "$current" ] && [ "$next" = "$current" ]; then
-            echo "No release-worthy commits since $current."
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$next"
-          git push origin "$next"
-
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 
       - name: Install NSIS
         run: choco install nsis -y
 
-      - uses: android-actions/setup-android@v4
-
-      - name: Install Android SDK packages
-        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;26.3.11579264" "platform-tools"
+      - uses: actions/download-artifact@v4
+        with:
+          name: stereoscope-apk
+          path: bin
 
       - uses: goreleaser/goreleaser-action@v6
         with:

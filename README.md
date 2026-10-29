@@ -35,7 +35,7 @@ wails3 task dev          # current desktop
 goreleaser build --snapshot --clean
 ```
 
-Push to `main`, then run the Release workflow from the Actions tab. It has no inputs. The workflow tags the next semantic version from the conventional commits, and GoReleaser writes the release notes and publishes that version. The job runs on a Windows runner with NSIS and the Android SDK. The release contains the Windows zip archives, the NSIS installer, and `stereoscope.apk` when the SDK is available. Nothing is code-signed.
+Push to `main`, then run the Release workflow from the Actions tab. It has no inputs. The workflow tags the next semantic version from the conventional commits. The APK is built on Ubuntu, because the Wails Android task only supports a Linux or macOS NDK. GoReleaser then runs on Windows, writes the release notes, and publishes that version with the Windows zip archives, the NSIS installer, and the APK. Nothing is code-signed.
 
 The version shown in About comes from the git tag via GoReleaser. A normal `go build` shows `dev`.
 
