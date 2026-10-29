@@ -159,13 +159,7 @@ function render() {
     sources.length === 0
       ? `<p class="empty">Nothing is playing to this device</p>`
       : sources
-          .map((src) => {
-            const img = src.icon
-              ? `<img alt="" src="${src.icon}" />`
-              : icon(Volume2, 18, 18);
-            const note = src.note ? `<small>${escape(src.note)}</small>` : "";
-            return `<li>${img}<div><strong>${escape(src.name)}</strong>${note}</div><div class="mini"><div style="width:${Math.min(100, Math.round(src.peak * 100))}%"></div></div></li>`;
-          })
+          .map((src) => playingRow(src))
           .join("");
 
   const android =
@@ -201,7 +195,7 @@ function render() {
     </header>
     ${android}
     <section class="grid">${cards}</section>
-    <section class="playing">
+    <section class="playing${platform === "android" ? " names" : ""}">
       <h2>${icon(sources.length ? Volume2 : VolumeX, 18, 18)} Now playing</h2>
       <ul>${playing}</ul>
     </section>
@@ -234,6 +228,13 @@ function render() {
     capture = await BeginCapture();
     render();
   });
+}
+
+function playingRow(src: Source): string {
+  const img = src.icon ? `<img alt="" src="${src.icon}" />` : icon(Volume2, 18, 18);
+  const note = src.note ? `<small>${escape(src.note)}</small>` : "";
+  const level = platform === "android" ? "" : `<div class="mini"><div style="width:${Math.min(100, Math.round(src.peak * 100))}%"></div></div>`;
+  return `<li>${img}<div><strong>${escape(src.name)}</strong>${note}</div>${level}</li>`;
 }
 
 function escape(value: string): string {
@@ -304,11 +305,7 @@ function updatePlaying() {
     sources.length === 0
       ? `<p class="empty">Nothing is playing to this device</p>`
       : `<ul>${sources
-          .map((src) => {
-            const img = src.icon ? `<img alt="" src="${src.icon}" />` : icon(Volume2, 18, 18);
-            const note = src.note ? `<small>${escape(src.note)}</small>` : "";
-            return `<li>${img}<div><strong>${escape(src.name)}</strong>${note}</div><div class="mini"><div style="width:${Math.min(100, Math.round(src.peak * 100))}%"></div></div></li>`;
-          })
+          .map((src) => playingRow(src))
           .join("")}</ul>`;
   const list = section.querySelector("ul, .empty");
   if (list) list.outerHTML = playing;

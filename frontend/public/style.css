@@ -91,6 +91,7 @@ button:hover, select:hover { border-color: var(--accent); }
 .playing { margin-top: 16px; }
 .playing ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
 .playing li { display: grid; grid-template-columns: 28px 1fr 120px; gap: 10px; align-items: center; }
+.playing.names li { grid-template-columns: 28px 1fr; }
 .playing img, .playing .icon { width: 22px; height: 22px; }
 .playing small { display: block; }
 .mini { height: 8px; background: #10140f; border-radius: 999px; overflow: hidden; }
