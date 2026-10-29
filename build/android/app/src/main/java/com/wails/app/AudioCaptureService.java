@@ -67,7 +67,13 @@ public class AudioCaptureService extends Service {
                 stopSelf();
             }
         }, new Handler(Looper.getMainLooper()));
-        startRecorder();
+        try {
+            startRecorder();
+        } catch (RuntimeException ex) {
+            AudioBridge.nativeSetCaptureState("denied");
+            releaseCapture();
+            stopSelf();
+        }
         return START_NOT_STICKY;
     }
 
@@ -78,52 +84,47 @@ public class AudioCaptureService extends Service {
                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
                 .build();
         int sampleRate = outputSampleRate();
-        // A positional CHANNEL_IN_STEREO mask is an input mask. AudioFlinger
-        // downmixes the playback mix to mono and copies it onto both sides.
-        // Channel indexes 0 and 1 are the output's left and right.
+        // The mix needs a positional stereo mask or AudioRecord throws while the
+        // consent result is handled. The index mask selects output channels 0 and
+        // 1. Without it, the capture is a mono mix copied onto both meters.
         AudioFormat format = new AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                 .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
                 .setChannelIndexMask(0x3)
                 .build();
         int min = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
         if (min <= 0) {
-            min = sampleRate;
+            min = sampleRate * 4;
         }
         recorder = new AudioRecord.Builder()
                 .setAudioPlaybackCaptureConfig(config)
                 .setAudioFormat(format)
-                .setBufferSizeInBytes(Math.max(min, sampleRate) * 2)
+                .setBufferSizeInBytes(min * 2)
                 .build();
         if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
-            AudioBridge.nativeSetCaptureState("denied");
-            stopSelf();
-            return;
+            throw new IllegalStateException("playback capture was not initialised");
+        }
+        int channels = recorder.getChannelCount();
+        if (channels < 2) {
+            throw new IllegalStateException("playback capture did not open in stereo");
         }
         recorder.startRecording();
         running = true;
         AudioBridge.nativeSetCaptureState("capturing");
-        final int channels = Math.max(1, recorder.getChannelCount());
-        final int frames = Math.max(sampleRate / 20, min / 2);
+        final int frames = Math.max(sampleRate / 20, min / 4);
         Thread thread = new Thread(() -> {
             short[] samples = new short[frames * channels];
-            while (running) {
+            while (running && recorder != null) {
                 int n = recorder.read(samples, 0, samples.length);
-                if (n <= 0) {
+                if (n < channels) {
                     continue;
                 }
                 int left = 0;
                 int right = 0;
-                if (channels < 2) {
-                    for (int i = 0; i < n; i++) {
-                        left = Math.max(left, Math.abs(samples[i]));
-                    }
-                    right = left;
-                } else {
-                    for (int i = 0; i + channels - 1 < n; i += channels) {
-                        left = Math.max(left, Math.abs(samples[i]));
-                        right = Math.max(right, Math.abs(samples[i + 1]));
-                    }
+                for (int i = 0; i + 1 < n; i += channels) {
+                    left = Math.max(left, Math.abs(samples[i]));
+                    right = Math.max(right, Math.abs(samples[i + 1]));
                 }
                 AudioBridge.nativeSetLevels(left / 32768f, right / 32768f);
             }

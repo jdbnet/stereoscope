@@ -16,7 +16,7 @@ The system tray shows a compact left/right percentage and can open or quit the a
 
 Android support uses the experimental Wails v3 Android target. Android usually plays everything through one active output, so choosing a device monitors that route rather than a separate mix.
 
-Levels require Android 10 or later. The app asks for media-projection consent and keeps a foreground notification while it is listening. It measures the left and right peaks of the captured mix. The capture asks for the output's first two channels, because a normal stereo input mask makes Android downmix that mix to mono and copy it onto both meters. Many streaming and DRM apps opt out of capture, so their audio will not move the meters. The interface says: this app doesn't allow audio capture.
+Levels require Android 10 or later. The app asks for media-projection consent and keeps a foreground notification while it is listening. It measures the left and right peaks of the captured mix. The capture requests a stereo mix and the output's first two channels, so one side playing does not get copied onto both meters. Many streaming and DRM apps opt out of capture, so their audio will not move the meters. The interface says: this app doesn't allow audio capture.
 
 Now playing lists what Android reports, for example "Media playback", "Game", or "Notification". An app name is shown only when a media notification is visible and notification access has been enabled for StereoScope. Test tones are not available.
 
