@@ -13,9 +13,10 @@ import (
 
 // Service is the Wails-bound audio monitor.
 type Service struct {
-	backend audio.Backend
-	cancel  context.CancelFunc
-	window  *application.WebviewWindow
+	backend     audio.Backend
+	cancel      context.CancelFunc
+	window      *application.WebviewWindow
+	captureText string
 }
 
 // New builds the service. The window may be nil until attached.
@@ -74,6 +75,10 @@ func (s *Service) loop(ctx context.Context) {
 		case <-sources.C:
 			if src, err := s.backend.Sources(); err == nil {
 				application.Get().Event.Emit("sources", src)
+			}
+			if state := captureState(); state != "" && state != s.captureText {
+				s.captureText = state
+				application.Get().Event.Emit("capture", state)
 			}
 		case <-changes:
 			s.emitDevices()

@@ -80,7 +80,12 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "${GITHUB_ENV}"
 
       - name: Build the APK
-        run: wails3 task android:package:fat
+        env:
+          STEREO_VERSION: ${{ needs.tag.outputs.tag }}
+        run: |
+          STEREO_VERSION="${STEREO_VERSION#v}"
+          export STEREO_VERSION
+          wails3 task android:package:fat
 
       - uses: actions/upload-artifact@v4
         with:

@@ -4,7 +4,7 @@ includes:
   common: ../Taskfile.yml
 
 vars:
-  APP_ID: '{{.APP_ID | default "com.wails.app"}}'
+  APP_ID: '{{.APP_ID | default "uk.co.jdbnet.stereoscope"}}'
   MIN_SDK: '21'
   TARGET_SDK: '35'
   # The emulator runs the host architecture; physical devices are arm64
@@ -53,7 +53,7 @@ tasks:
           ARCH: '{{.ARCH | default .HOST_ARCH}}'
           PRODUCTION: '{{.PRODUCTION}}'
     vars:
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s -X stereoscope/internal/version.Version=${STEREO_VERSION:-dev}"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
     env:
       PRODUCTION: '{{.PRODUCTION | default "false"}}'
 
@@ -111,7 +111,7 @@ tasks:
         go build -buildmode=c-shared -overlay build/android/overlay.json {{.BUILD_FLAGS}} \
           -o build/android/app/src/main/jniLibs/$JNI_DIR/libwails.so ./cmd/stereoscope
     vars:
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production,android -trimpath -buildvcs=false -ldflags="-w -s -X stereoscope/internal/version.Version=${STEREO_VERSION:-dev}"{{else}}-tags android,debug -buildvcs=false -gcflags=all="-l"{{end}}'
 
   compile:go:all-archs:
     summary: Compile Go code for all Android architectures (fat APK)

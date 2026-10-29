@@ -11,11 +11,17 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.stereoscope.app"
+        applicationId "uk.co.jdbnet.stereoscope"
         minSdk 21
         targetSdk 35
-        versionCode 1
-        versionName "0.1.0"
+        def appVersion = System.getenv("STEREO_VERSION") ?: "dev"
+        def parts = appVersion.tokenize('.')
+        def code = 1
+        if (parts.size() >= 3 && parts[0].isInteger() && parts[1].isInteger() && parts[2].isInteger()) {
+            code = (parts[0] as int) * 10000 + (parts[1] as int) * 100 + (parts[2] as int)
+        }
+        versionCode code
+        versionName appVersion
 
         // Configure supported ABIs
         ndk {

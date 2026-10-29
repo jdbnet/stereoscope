@@ -12,3 +12,5 @@ func (s *Service) BeginCapture() string {
 
 // CaptureState reports whether playback capture is running.
 func (s *Service) CaptureState() string { return android.CaptureState() }
+
+func captureState() string { return android.CaptureState() }

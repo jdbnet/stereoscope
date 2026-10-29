@@ -166,7 +166,7 @@ function render() {
           .join("");
 
   const android =
-    platform === "android"
+    platform === "android" && capture !== "capturing"
       ? `<section class="notice">
           <p>Android routes playback to one active output. The device list shows that route. Levels need Android 10 or later, a capture consent prompt, and a foreground notification.</p>
           <p>Apps that opt out of capture, including many streaming apps, will not move the meters. This app doesn't allow audio capture.</p>
@@ -377,6 +377,12 @@ Events.On("levels", (event) => {
 Events.On("sources", (event) => {
   sources = (event.data as Source[]) ?? [];
   updatePlaying();
+});
+Events.On("capture", (event) => {
+  const next = String(event.data ?? "");
+  if (!next || next === capture) return;
+  capture = next;
+  render();
 });
 Events.On("devices", (event) => {
   devices = (event.data as Device[]) ?? [];

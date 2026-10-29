@@ -26,7 +26,7 @@ Test tones use a short shared-mode WASAPI render stream. The status label uses a
 
 ## Android
 
-Wails v3 Android support is experimental. The same `main.go` is built as `libwails.so`. There is no high-level native-call API, so Go calls the static methods on `com.wails.app.AudioBridge`.
+Wails v3 Android support is experimental. The same `main.go` is built as `libwails.so`. There is no high-level native-call API, so Go calls the static methods on `com.wails.app.AudioBridge`. The installed package id is `uk.co.jdbnet.stereoscope`; the Java namespace stays `com.wails.app`.
 
 Android routes playback to one active output. The device list reports that route. Levels need Android 10 or later, a media-projection consent prompt, and a foreground service. Apps that opt out of capture do not move the meters. Sources are usage labels such as "Media playback" or "Game". A package name is shown only when a media notification is actually visible. Test tones are unavailable. Tray calls are Windows-only.
 
@@ -34,4 +34,4 @@ Android routes playback to one active output. The device list reports that route
 
 ## Release
 
-GoReleaser v2 builds the Windows amd64 executable and publishes the GitHub release. `.goreleaser.yaml` runs `scripts/prepare` first (bindings and frontend). The release asset is the raw `stereoscope.exe`, not a zip or installer. The Release workflow is `workflow_dispatch` only. It tags `svu next` from the conventional commits, builds the APK on Ubuntu, then runs `goreleaser release --clean` on Windows. The Android job follows IceTray: JDK 21, `android-actions/setup-android@v4`, NDK 28.2, `ANDROID_HOME` set from `ANDROID_SDK_ROOT`, and `wails3 task android:package:fat`. The Wails Android task refuses a Windows host. GoReleaser writes the release notes and stamps `-X stereoscope/internal/version.Version`. A plain `go build` reports `dev`.
+GoReleaser v2 builds the Windows amd64 executable and publishes the GitHub release. `.goreleaser.yaml` runs `scripts/prepare` first (bindings and frontend). The release asset is the raw `stereoscope.exe`, not a zip or installer. The Release workflow is `workflow_dispatch` only. It tags `svu next` from the conventional commits, builds the APK on Ubuntu, then runs `goreleaser release --clean` on Windows. The Android job follows IceTray: JDK 21, `android-actions/setup-android@v4`, NDK 28.2, `ANDROID_HOME` set from `ANDROID_SDK_ROOT`, and `wails3 task android:package:fat`. That job exports `STEREO_VERSION` from the tag (without the `v`) so the APK `versionName` and `-X stereoscope/internal/version.Version` match the GitHub release. The Wails Android task refuses a Windows host. GoReleaser writes the release notes and stamps the same version on the Windows executable. A plain `go build` reports `dev`.

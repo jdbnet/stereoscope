@@ -7,7 +7,7 @@ version: '3'
 info:
   companyName: "StereoScope"
   productName: "StereoScope"
-  productIdentifier: "com.stereoscope.app"
+  productIdentifier: "uk.co.jdbnet.stereoscope"
   description: "See which stereo channels are playing, and which apps are playing them."
   copyright: "© StereoScope contributors"
   comments: "StereoScope"
